@@ -1,0 +1,34 @@
+{
+  "reactions": [
+    {
+      "id": "react_neutralization",
+      "name": "중화 반응",
+      "attacker_type": "Alkaline",
+      "target_type": "Acid",
+      "damage_multiplier": 2.5,
+      "visual_effect": "Steam_Cloud",
+      "description": "산과 염기가 만나 물과 염을 생성하며 빠르게 무해화됩니다."
+    },
+    {
+      "id": "react_oxidation",
+      "name": "산화 분해",
+      "attacker_type": "Oxidation",
+      "target_type": "Flammable",
+      "damage_multiplier": 2.0,
+      "visual_effect": "Flash_Burn",
+      "description": "강력한 산화제가 가연성 물질의 결합을 끊어버립니다."
+    },
+    {
+      "id": "react_cooling",
+      "name": "냉각/안정화",
+      "attacker_id": "elem_He",
+      "target_type": "All",
+      "damage_multiplier": 0.1,
+      "debuff": {
+        "type": "SpeedReduction",
+        "value": 0.5,
+        "duration": 2.0
+      }
+    }
+  ]
+}

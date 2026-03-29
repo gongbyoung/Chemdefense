@@ -1,0 +1,57 @@
+{
+  "towers": [
+    {
+      "id": "elem_H",
+      "name": "수소",
+      "symbol": "H",
+      "atomic_number": 1,
+      "type": "Non-metal",
+      "cost": 10,
+      "range": 120,
+      "fire_rate": 0.5,
+      "projectile_speed": 300,
+      "damage_type": "Reduction",
+      "description": "가장 가벼운 원소. 산화물에서 산소를 떼어내는 환원 반응에 사용됩니다."
+    },
+    {
+      "id": "elem_Na",
+      "name": "나트륨",
+      "symbol": "Na",
+      "atomic_number": 11,
+      "type": "Alkali-metal",
+      "cost": 50,
+      "range": 100,
+      "fire_rate": 1.2,
+      "projectile_speed": 200,
+      "damage_type": "Alkaline",
+      "description": "반응성이 매우 강한 금속. 산성 화합물을 중화하는 데 탁월합니다."
+    },
+    {
+      "id": "elem_Cl",
+      "name": "염소",
+      "symbol": "Cl",
+      "atomic_number": 17,
+      "type": "Halogen",
+      "cost": 70,
+      "range": 180,
+      "fire_rate": 0.8,
+      "projectile_speed": 400,
+      "damage_type": "Oxidation",
+      "description": "강력한 산화력을 가진 기체. 유기 화합물의 구조를 파괴합니다."
+    },
+    {
+      "id": "elem_He",
+      "name": "헬륨",
+      "symbol": "He",
+      "atomic_number": 2,
+      "type": "Noble-gas",
+      "cost": 100,
+      "range": 150,
+      "fire_rate": 2.0,
+      "projectile_speed": 0,
+      "damage_type": "Utility",
+      "special_effect": "Slow",
+      "description": "비활성 기체. 주변의 열을 식히고 적의 이동 속도를 늦춥니다."
+    }
+  ]
+}

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Element Guard v0.26 (Final Debug)</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0a; --panel: #1a1a1a; }
+        body { background: var(--bg); color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
+        .hidden { display: none !important; }
+        .menu-btn { padding: 15px 30px; background: #222; border: 2px solid #444; color: white; cursor: pointer; border-radius: 8px; font-size: 1.1em; transition: 0.3s; margin: 10px; width: 200px; }
+        .menu-btn:hover:not(:disabled) { background: var(--primary); color: black; border-color: #fff; }
+        .menu-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        #editor-screen { background: #111; z-index: 200; overflow-y: auto; padding: 40px; }
+        .editor-container { display: flex; gap: 20px; max-width: 1100px; text-align: left; }
+        .edit-box { background: #1a1a1a; padding: 20px; border: 1px solid var(--primary); border-radius: 10px; flex: 1; }
+        textarea { width: 100%; height: 350px; background: #000; color: #0f0; border: 1px solid #333; font-family: monospace; font-size: 11px; margin-top: 10px; }
+        #header { width: 1000px; background: var(--panel); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; box-sizing: border-box; }
+        #game-container { position: relative; border: 2px solid #333; background: #000; line-height: 0; margin-top: 10px; }
+        canvas { background: #000; cursor: crosshair; }
+        .ui-panel { width: 1000px; background: var(--panel); padding: 15px; border-radius: 8px; display: flex; gap: 10px; box-sizing: border-box; margin-top: 10px; overflow-x: auto; }
+        .tower-card { padding: 10px; background: #333; border: 2px solid #555; cursor: pointer; border-radius: 6px; text-align: center; min-width: 70px; color: white; font-size: 12px; }
+        .tower-card.selected { border-color: var(--primary); background: #224433; }
+        .stats { font-weight: bold; color: var(--primary); }
+        .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 350px; background: #111; border: 2px solid var(--primary); padding: 25px; border-radius: 15px; z-index: 200; box-shadow: 0 0 40px #000; }
+        #pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; color: var(--primary); font-size: 3em; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 50; }
+        #pause-overlay.visible { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<!-- 메인 메뉴 -->
+<div id="main-menu" class="screen">
+    <h1 style="color:var(--primary); font-size: 4em; margin-bottom: 10px;">ELEMENT GUARD</h1>
+    <p id="load-status" style="color:#ff00ff; font-weight:bold;">데이터 로드 중...</p>
+    <div style="margin: 20px 0;">
+        <button class="menu-btn" onclick="initStage(1)">TUTORIAL 1</button>
+        <button class="menu-btn" id="tut-2" onclick="initStage(2)" disabled>TUTORIAL 2</button>
+        <button class="menu-btn" id="tut-3" onclick="initStage(3)" disabled>TUTORIAL 3</button>
+    </div>
+    <p id="v-tag" style="cursor:pointer; color:#444; font-size: 14px; margin-top: 50px;" onclick="versionClick()">v0.26 (Click 5 times for Editor)</p>
+</div>
+
+<!-- 에디터 화면 -->
+<div id="editor-screen" class="screen hidden">
+    <h2 style="color:var(--primary);">🛠 CHEMICAL SYSTEM EDITOR</h2>
+    <div class="editor-container">
+        <div class="edit-box">
+            <h4>Stages (stages.json)</h4>
+            <textarea id="json-stages"></textarea>
+            <button class="menu-btn" style="width:100%; font-size:14px;" onclick="saveEditor('stages')">Apply Map Data</button>
+        </div>
+        <div class="edit-box">
+            <h4>Enemies (compounds.json)</h4>
+            <textarea id="json-compounds"></textarea>
+            <button class="menu-btn" style="width:100%; font-size:14px;" onclick="saveEditor('compounds')">Apply Enemy Data</button>
+        </div>
+    </div>
+    <button class="menu-btn" style="background:#444;" onclick="closeEditor()">CLOSE EDITOR</button>
+</div>
+
+<!-- 인게임 -->
+<div id="header" class="hidden">
+    <div id="stage-title" class="stats">STAGE 1</div>
+    <div style="font-size:10px; color:#555;">v0.26</div>
+    <div>💰 <span id="money-ui" class="stats">0</span></div>
+    <div>❤️ <span id="lives-ui" class="stats">20</span></div>
+    <div>WAVE: <span id="wave-ui" class="stats">0</span> / 10</div>
+    <button class="menu-btn" style="padding:5px 15px; width:auto; font-size:12px;" onclick="location.reload()">MENU</button>
+</div>
+
+<div id="game-layout" class="hidden">
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="pause-overlay">PAUSED</div>
+        <div id="upgrade-modal" class="modal hidden">
+            <h3 id="up-title" style="margin:0; color:var(--primary);">TOWER CONTROL</h3>
+            <p id="up-info" style="font-size:13px;"></p>
+            <button class="menu-btn" id="up-confirm-btn" style="width:100%; margin-bottom:5px;">UPGRADE</button>
+            <button class="menu-btn" id="sell-btn" style="width:100%; background:#411; margin-bottom:10px;">SELL (70%)</button>
+            <button class="menu-btn" style="width:100%; background:#333;" onclick="closeUpgrade()">RESUME</button>
+        </div>
+    </div>
+    <div class="ui-panel" id="tower-menu"></div>
+</div>
+
+<script>
+let elementData = [], enemyData = [], reactionData = [], stagesData = [];
+const TILE_SIZE = 40, COLS = 25, ROWS = 12;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE;
+
+let grid, towers, enemies, projectiles, money, lives, wave, activeMap, gameActive = false, isPaused = false, selectedTowerIdx = 0;
+let vClicks = 0;
+
+/** [1] 데이터 로드 로직 (데이터 정제 포함) **/
+async function loadAllData() {
+    const status = document.getElementById('load-status');
+    const cacheBuster = `?v=${Date.now()}`;
+    try {
+        const [re, rc, rr, rs] = await Promise.all([
+            fetch('elements.json' + cacheBuster).then(r => r.json()),
+            fetch('compounds.json' + cacheBuster).then(r => r.json()),
+            fetch('reactions.json' + cacheBuster).then(r => r.json()),
+            fetch('stages.json' + cacheBuster).then(r => r.json())
+        ]);
+
+        const extract = (data) => Array.isArray(data) ? data : Object.values(data).find(v => Array.isArray(v)) || [];
+        elementData = extract(re);
+        enemyData = extract(rc);
+        reactionData = extract(rr);
+        stagesData = extract(rs);
+
+        status.innerText = "데이터 연결 성공!"; status.style.color = "#0f8";
+        updateMenuLock();
+        document.getElementById('json-stages').value = JSON.stringify(stagesData, null, 2);
+        document.getElementById('json-compounds').value = JSON.stringify(enemyData, null, 2);
+    } catch (e) {
+        status.innerText = "JSON 에러: " + e.message; status.style.color = "#f44";
+        console.error("Syntax Error Check:", e);
+    }
+}
+
+/** [2] 적군 클래스 (골드 추가 로직 핵심 수정) **/
+class Enemy {
+    constructor(data) {
+        this.data = data; this.hp = data.hp; this.maxHp = data.hp;
+        this.x = activeMap.start.c * 40 + 20; this.y = activeMap.start.r * 40 + 20;
+        this.path = findPath(activeMap.start.r, activeMap.start.c, activeMap.end.r, activeMap.end.c);
+        this.pathIdx = 0;
+        // 중요: atomic_sum이 문자열일 경우를 대비해 Number로 강제 변환
+        this.reward = Number(data.atomic_sum) || Number(data.reward) || 20;
+    }
+    update() {
+        if (!this.path || this.pathIdx >= this.path.length - 1) { lives--; return false; }
+        let target = this.path[this.pathIdx + 1];
+        let tx = target.c * 40 + 20, ty = target.r * 40 + 20;
+        let dist = Math.hypot(tx - this.x, ty - this.y);
+        if (dist < 2) { this.pathIdx++; return true; }
+        this.x += ((tx - this.x) / dist) * (this.data.speed || 1);
+        this.y += ((ty - this.y) / dist) * (this.data.speed || 1);
+        return true;
+    }
+    draw() {
+        ctx.fillStyle = this.data.color || "#f44"; ctx.beginPath(); ctx.arc(this.x, this.y, 14, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "white"; ctx.font = "bold 9px Arial"; ctx.textAlign="center"; ctx.fillText(this.data.formula || "", this.x, this.y+4);
+        ctx.fillStyle = "#00ff88"; ctx.fillRect(this.x-15, this.y-22, 30*(this.hp/this.maxHp), 3);
+    }
+}
+
+/** [3] 타워 클래스 (fire_rate, damage_type 지원) **/
+class Tower {
+    constructor(r,c,d) { this.r=r;this.c=c;this.x=c*40+20;this.y=r*40+20;this.data=d;this.lastShot=0;this.level=1;this.invested=d.cost; }
+    get range() { return this.data.range * Math.pow(1.05, this.level-1); }
+    get fireRate() { return (this.data.fire_rate || this.data.fireRate || 1.0) * 1000; }
+    update() {
+        if(isPaused) return;
+        if(Date.now() - this.lastShot > this.fireRate) {
+            let target = enemies.find(e => Math.hypot(e.x-this.x, e.y-this.y) < this.range);
+            if(target) { projectiles.push(new Projectile(this.x, this.y, target, this.data, 25*Math.pow(1.05, this.level-1))); this.lastShot = Date.now(); }
+        }
+    }
+    draw() {
+        ctx.fillStyle = this.data.color || "#555"; ctx.beginPath(); ctx.roundRect(this.c*40+4, this.r*40+4, 32, 32, 5); ctx.fill();
+        ctx.fillStyle = "#000"; ctx.font = "bold 11px Arial"; ctx.textAlign="center"; ctx.fillText(this.data.symbol, this.x, this.y+4);
+    }
+}
+
+/** [4] 투사체 (damage_type 상성 지원) **/
+class Projectile {
+    constructor(x,y,t,d,dmg) { this.x=x;this.y=y;this.target=t;this.data=d;this.dmg=dmg;this.speed=12; }
+    update() {
+        let dx = this.target.x-this.x, dy = this.target.y-this.y, dist = Math.hypot(dx, dy);
+        if(dist < 10) { 
+            let fDmg = this.dmg;
+            // damage_type 과 적의 type 비교
+            let myType = this.data.damage_type || this.data.type;
+            let r = reactionData.find(re => re.attacker_type === myType && re.target_type === this.target.data.type);
+            if(r) fDmg *= r.multiplier || r.damage_multiplier; 
+            this.target.hp -= fDmg; return true; 
+        }
+        this.x += (dx/dist)*this.speed; this.y += (dy/dist)*this.speed; return false;
+    }
+    draw() { ctx.fillStyle = this.data.color; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); }
+}
+
+/** [5] 게임 루프 및 경로 탐색 **/
+function gameLoop() {
+    if (!gameActive) return;
+    if (!isPaused) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        renderMap();
+        towers.forEach(t => t.update());
+        projectiles = projectiles.filter(p => !p.update());
+        enemies = enemies.filter(e => {
+            if (e.hp <= 0) { money += e.reward; updateUI(); return false; } // 골드 지급!
+            return e.update();
+        });
+        if (lives <= 0) { alert("City Overwhelmed!"); location.reload(); return; }
+        if (wave >= 10 && enemies.length === 0) { alert("STAGE CLEAR!"); location.reload(); }
+    }
+    towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw());
+    requestAnimationFrame(gameLoop);
+}
+
+function findPath(sr, sc, er, ec) {
+    let q = [{r: sr, c: sc, p: [{r: sr, c: sc}]}];
+    let v = Array.from({length:ROWS},()=>Array(COLS).fill(false));
+    v[sr][sc] = true;
+    while(q.length > 0) {
+        let curr = q.shift();
+        if(curr.r === er && curr.c === ec) return curr.p;
+        for(let d of [{r:1,c:0},{r:-1,c:0},{r:0,c:1},{r:0,c:-1}]) {
+            let nr=curr.r+d.r, nc=curr.c+d.c;
+            if(nr>=0 && nr<ROWS && nc>=0 && nc<COLS && !v[nr][nc] && grid[nr][nc] === 0) {
+                v[nr][nc]=true; q.push({r:nr, c:nc, p: [...curr.p, {r:nr, c:nc}]});
+            }
+        }
+    }
+    return null;
+}
+
+function renderMap() {
+    for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+        ctx.strokeStyle = "#151515"; ctx.strokeRect(c*40, r*40, 40, 40);
+        if(grid[r][c]===2) { ctx.fillStyle = "#333"; ctx.fillRect(c*40+2, r*40+2, 36, 36); }
+    }
+    ctx.fillStyle = "rgba(0,255,136,0.1)"; ctx.fillRect(activeMap.start.c*40, activeMap.start.r*40, 40, 40);
+    ctx.fillStyle = "rgba(255,68,68,0.1)"; ctx.fillRect(activeMap.end.c*40, activeMap.end.r*40, 40, 40);
+}
+
+canvas.onclick = (ev) => {
+    let rect = canvas.getBoundingClientRect();
+    let c = Math.floor((ev.clientX - rect.left)/40), r = Math.floor((ev.clientY - rect.top)/40);
+    const existing = towers.find(t => t.r === r && t.c === c);
+    if (existing) { pause(); openUpgrade(existing); return; }
+    if (grid[r][c] !== 0) return;
+    let tData = elementData[selectedTowerIdx];
+    if (money >= tData.cost) {
+        grid[r][c] = 1;
+        if (findPath(activeMap.start.r, activeMap.start.c, activeMap.end.r, activeMap.end.c)) {
+            towers.push(new Tower(r, c, tData));
+            money -= tData.cost; updateUI();
+            enemies.forEach(e => { e.path = findPath(Math.floor(e.y/40), Math.floor(e.x/40), activeMap.end.r, activeMap.end.c); e.pathIdx=0; });
+        } else grid[r][c] = 0;
+    }
+};
+
+/** [6] UI 및 에디터 유틸리티 **/
+function versionClick() { if(++vClicks >= 5) { document.getElementById('editor-screen').classList.remove('hidden'); vClicks = 0; } }
+function closeEditor() { document.getElementById('editor-screen').classList.add('hidden'); }
+function saveEditor(type) {
+    try {
+        if(type === 'stages') stagesData = JSON.parse(document.getElementById('json-stages').value);
+        else enemyData = JSON.parse(document.getElementById('json-compounds').value);
+        alert("Applied! GitHub JSON files need manual update too.");
+    } catch(e) { alert("JSON Syntax Error!"); }
+}
+function initStage(num) {
+    activeMap = stagesData[(num-1)%stagesData.length];
+    document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('header').classList.remove('hidden');
+    document.getElementById('game-layout').classList.remove('hidden');
+    grid = Array.from({length:ROWS}, () => Array(COLS).fill(0));
+    if(activeMap.walls) activeMap.walls.forEach(w => { for(let r=w.r;r<w.r+w.h;r++)for(let c=w.c;c<w.c+w.w;c++)grid[r][c]=2; });
+    towers=[]; enemies=[]; projectiles=[]; money=600; lives=20; wave=0; gameActive=true;
+    updateUI(); initTowerMenu(); spawnWave(); requestAnimationFrame(gameLoop);
+}
+function pause() { isPaused = true; document.getElementById('pause-overlay').classList.add('visible'); }
+function resume() { isPaused = false; document.getElementById('pause-overlay').classList.remove('visible'); }
+function openUpgrade(t) {
+    const m = document.getElementById('upgrade-modal');
+    const cost = Math.floor(t.data.cost * 0.8 * t.level);
+    document.getElementById('up-info').innerHTML = `Lv.${t.level} -> ${t.level+1}<br>Cost: ${cost}G`;
+    document.getElementById('up-confirm-btn').onclick = () => { if(money>=cost){ money-=cost; t.level++; t.invested+=cost; updateUI(); closeUpgrade(); } };
+    document.getElementById('sell-btn').onclick = () => { money+=Math.floor(t.invested*0.7); grid[t.r][t.c]=0; towers=towers.filter(tw=>tw!==t); enemies.forEach(e=>{e.path=findPath(Math.floor(e.y/40),Math.floor(e.x/40),activeMap.end.r,activeMap.end.c);e.pathIdx=0;}); updateUI(); closeUpgrade(); };
+    m.classList.remove('hidden');
+}
+function closeUpgrade() { document.getElementById('upgrade-modal').classList.add('hidden'); resume(); }
+function updateUI() { document.getElementById('money-ui').innerText = money; document.getElementById('lives-ui').innerText = lives; document.getElementById('wave-ui').innerText = wave; }
+function initTowerMenu() { document.getElementById('tower-menu').innerHTML = elementData.map((t,i) => `<div class="tower-card ${i===selectedTowerIdx?'selected':''}" style="border-bottom:4px solid ${t.color};" onclick="selectedTowerIdx=${i};initTowerMenu()"><b>${t.symbol}</b><br>${t.cost}</div>`).join(""); }
+function updateMenuLock() { let prog = parseInt(localStorage.getItem('chem_progress') || "1"); for(let i=2; i<=5; i++) if(prog >= i) { let btn = document.getElementById(`tut-${i}`); if(btn) btn.disabled = false; } }
+function spawnWave() {
+    if(!gameActive || wave >= 10) return;
+    wave++; updateUI();
+    let count = 0, spawnCount = 3 + Math.floor(wave/2);
+    let timer = setInterval(() => { if(isPaused) return; let d = enemyData[Math.floor(Math.random()*enemyData.length)]; enemies.push(new Enemy({...d, hp: d.hp*(1+(wave-1)*0.25), speed: (d.speed||0.7)+(wave*0.02)})); if(++count >= spawnCount) clearInterval(timer); }, 1200);
+}
+loadAllData();
+</script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+{
+  "enemies": [
+    {
+      "id": "comp_HCl",
+      "name": "염산",
+      "formula": "HCl",
+      "hp": 100,
+      "speed": 1.0,
+      "hazard_level": 3,
+      "type": "Acid",
+      "reward": 20,
+      "description": "부식성이 강한 강산. 중화 반응이 필요합니다.",
+      "atomic_sum": 22
+    },
+    {
+      "id": "comp_CH4",
+      "name": "메탄",
+      "formula": "CH4",
+      "hp": 150,
+      "speed": 2.0,
+      "hazard_level": 2,
+      "type": "Flammable",
+      "reward": 30,
+      "description": "가연성이 높은 천연가스. 산화시켜 분해해야 합니다.",
+      "atomic_sum": 18
+    },
+    {
+      "id": "comp_H2SO4",
+      "name": "황산",
+      "formula": "H2SO4",
+      "hp": 500,
+      "speed": 0.7,
+      "hazard_level": 5,
+      "type": "Strong-Acid",
+      "reward": 100,
+      "description": "강력한 탈수 작용과 부식성을 가진 액체 괴물입니다.",
+      "atomic_sum": 56
+    },
+    {
+      "id": "comp_CH3COOH",
+      "name": "초산",
+      "formula": "CH3COOH",
+      "hp": 120,
+      "speed": 1.2,
+      "hazard_level": 2,
+      "type": "Weak-Acid",
+      "reward": 25,
+      "description": "식초의 주성분으로 산성이나 상대적으로 약한 부식성을 가집니다.",
+      "atomic_sum": 32
+    },
+    {
+      "id": "comp_NaOH",
+      "name": "가성소다",
+      "formula": "NaOH",
+      "hp": 200,
+      "speed": 0.9,
+      "hazard_level": 4,
+      "type": "Base",
+      "reward": 40,
+      "description": "강염기성 물질로 피부와 조직을 심하게 손상시킵니다.",
+      "atomic_sum": 40
+    },
+    {
+      "id": "comp_NH3",
+      "name": "암모니아수",
+      "formula": "NH3",
+      "hp": 180,
+      "speed": 1.5,
+      "hazard_level": 3,
+      "type": "Base-Gas",
+      "reward": 35,
+      "description": "자극적인 냄새를 가진 염기성 기체. 호흡기에 해롭습니다.",
+      "atomic_sum": 17
+    },
+    {
+      "id": "comp_C2H5OH",
+      "name": "소독약",
+      "formula": "C2H5OH",
+      "hp": 160,
+      "speed": 1.8,
+      "hazard_level": 2,
+      "type": "Flammable",
+      "reward": 30,
+      "description": "에탄올 기반 소독제. 살균력이 있으나 인화성이 높습니다.",
+      "atomic_sum": 46
+    },
+    {
+      "id": "comp_NaClO",
+      "name": "표백약",
+      "formula": "NaClO",
+      "hp": 220,
+      "speed": 1.0,
+      "hazard_level": 4,
+      "type": "Oxidizer",
+      "reward": 50,
+      "description": "강력한 산화제로 세균을 제거하지만 피부와 호흡기에 위험합니다.",
+      "atomic_sum": 74
+    },
+    {
+      "id": "comp_Detergent",
+      "name": "세제",
+      "formula": "C12H25SO4Na",
+      "hp": 140,
+      "speed": 1.3,
+      "hazard_level": 2,
+      "type": "Surfactant",
+      "reward": 20,
+      "description": "거품을 내는 세정제. 피부와 눈에 자극을 줄 수 있습니다.",
+      "atomic_sum": 289
+    },
+    {
+      "id": "comp_Paint",
+      "name": "페인트",
+      "formula": "C8H10",
+      "hp": 200,
+      "speed": 1.1,
+      "hazard_level": 3,
+      "type": "Solvent",
+      "reward": 35,
+      "description": "휘발성 유기화합물을 포함한 액체. 흡입 시 건강에 해롭습니다.",
+      "atomic_sum": 106
+    },
+    {
+      "id": "comp_Battery",
+      "name": "건전지",
+      "formula": "Zn + MnO2",
+      "hp": 250,
+      "speed": 0.8,
+      "hazard_level": 4,
+      "type": "Electrochemical",
+      "reward": 60,
+      "description": "누액 시 강한 알칼리성 물질을 방출합니다.",
+      "atomic_sum": 153
+    },
+    {
+      "id": "comp_Pesticide",
+      "name": "살충제",
+      "formula": "C6H6Cl6",
+      "hp": 300,
+      "speed": 1.4,
+      "hazard_level": 5,
+      "type": "Toxic",
+      "reward": 80,
+      "description": "강력한 독성을 가진 화합물. 환경과 인체에 치명적입니다.",
+      "atomic_sum": 291
+    }
+
+  ]
+}

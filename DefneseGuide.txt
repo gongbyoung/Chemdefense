@@ -1,0 +1,24 @@
+
+데이터 관리 가이드)
+각 파일의 항목이 어떤 역할을 하는지 알면, 새로운 원소나 적을 쉽게 추가할 수 있습니다.
+① elements.json (아군 타워: 원소)
+id: 시스템 내부 이름 (중복 금지)
+symbol: 타워 위에 표시될 원소 기호 (Na, Cl 등)
+cost: 타워 설치 가격
+range: 공격 사거리 (픽셀 단위)
+fireRate: 발사 간격 (ms 단위, 1000은 1초에 한 번)
+type: 속성 (Alkaline, Oxidation 등) → reactions.json과 연동됨
+② compounds.json (적군: 위험물)
+id: 내부 이름
+formula: 적 머리 위에 표시될 화학식 (HCl, CH4 등)
+hp: 체력 (웨이브마다 자동 상승하도록 로직 설계됨)
+speed: 이동 속도 (0.5 ~ 1.5 권장)
+type: 적의 속성 (Acid, Flammable 등)
+byproduct: 처치 시 뜨는 텍스트 (NaCl 등)
+desc: 창고에서 보여줄 화학적 설명
+③ reactions.json (상성: 데미지 배수)
+attacker_type: 공격하는 타워의 type
+target_type: 맞는 적의 type
+multiplier: 데미지 배수 (예: 2.5는 2.5배 데미지)
+④ stages.json (맵 지형 데이터)
+MAPS: 각 스테이지의 시작/종료 좌표와 고정 벽(walls) 위치를 정의합니다.
