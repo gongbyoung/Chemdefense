@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Element Guard v0.37 (Live Data Editor)</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0a; --panel: #1a1a1a; }
+        body { background: var(--bg); color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
+        .hidden { display: none !important; }
+        
+        /* 레이아웃 */
+        #header { width: 1000px; background: var(--panel); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; box-sizing: border-box; }
+        #game-container { position: relative; border: 2px solid #333; background: #000; line-height: 0; margin-top: 10px; display: flex; }
+        canvas { background: #000; cursor: crosshair; }
+
+        /* 실시간 에디터 사이드바 */
+        #editor-sidebar { width: 280px; background: #111; border-left: 2px solid var(--primary); padding: 15px; overflow-y: auto; height: 480px; font-size: 12px; }
+        .edit-item { margin-bottom: 15px; background: #1a1a1a; padding: 10px; border-radius: 5px; border: 1px solid #333; }
+        .edit-item label { display: block; color: var(--primary); margin-bottom: 5px; }
+        input, select { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 4px; margin-bottom: 5px; }
+
+        .ui-panel { width: 1000px; background: var(--panel); padding: 15px; border-radius: 8px; display: flex; gap: 10px; box-sizing: border-box; margin-top: 10px; justify-content: center; }
+        .tower-card { padding: 10px; background: #333; border: 2px solid #555; cursor: pointer; border-radius: 6px; text-align: center; min-width: 90px; }
+        .tower-card.selected { border-color: var(--primary); background: #224433; box-shadow: 0 0 10px var(--primary); }
+        .stats { font-weight: bold; color: var(--primary); }
+        .btn-action { padding: 5px; background: var(--primary); color: #000; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div id="main-menu" class="screen">
+    <h1 style="color:var(--primary); font-size: 4em; margin:0;">ELEMENT GUARD</h1>
+    <p id="load-status">데이터 동기화 중...</p>
+    <div style="margin-top:20px;">
+        <button class="btn-action" style="width:200px; padding:15px;" onclick="initStage(1)">TUTORIAL START</button>
+    </div>
+    <p style="margin-top:50px; cursor:pointer; color:#444;" onclick="versionClick()">v0.37 (Edit Mode: 5 clicks)</p>
+</div>
+
+<div id="header" class="hidden">
+    <div id="stage-title" class="stats">STAGE 1</div>
+    <div onclick="versionClick()" style="cursor:pointer; color:var(--primary); font-size:11px;">v0.37 [EDIT]</div>
+    <div>💰 <span id="money-ui" class="stats">0</span></div>
+    <div>WAVE: <span id="wave-ui" class="stats">0</span> / 10</div>
+    <button style="padding:5px 10px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="location.reload()">EXIT</button>
+</div>
+
+<div id="game-layout" class="hidden" style="display:flex; flex-direction:column; align-items:center;">
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- 실시간 에디터 사이드바 -->
+        <div id="editor-sidebar" class="hidden">
+            <h3 style="color:var(--primary); margin-top:0;">🛠 LIVE EDITOR</h3>
+            
+            <div class="edit-item">
+                <label>1. 적군 수치 수정</label>
+                <select id="edit-enemy-list" onchange="loadEnemyData()"></select>
+                HP: <input type="number" id="edit-hp">
+                SPD: <input type="number" id="edit-speed" step="0.1">
+                GOLD: <input type="number" id="edit-gold">
+                <button class="btn-action" onclick="applyEnemyEdit()">실시간 반영</button>
+                <button class="btn-action" style="margin-top:5px; background:#55f;" onclick="downloadJSON('compounds')">compounds.json 받기</button>
+            </div>
+
+            <div class="edit-item">
+                <label>2. 타워 수치 수정</label>
+                <select id="edit-tower-list" onchange="loadTowerData()"></select>
+                RANGE: <input type="number" id="edit-range">
+                F-RATE: <input type="number" id="edit-frate" step="0.1">
+                <button class="btn-action" onclick="applyTowerEdit()">실시간 반영</button>
+                <button class="btn-action" style="margin-top:5px; background:#55f;" onclick="downloadJSON('elements')">elements.json 받기</button>
+            </div>
+
+            <div class="edit-item">
+                <label>3. 맵 데이터 추출</label>
+                <p>에디터 켠 상태로 맵을 클릭하면 벽이 생깁니다.</p>
+                <button class="btn-action" style="background:#55f;" onclick="downloadJSON('stages')">stages.json 받기</button>
+            </div>
+        </div>
+    </div>
+    <div class="ui-panel" id="tower-menu"></div>
+</div>
+
+<script>
+/** [1] 데이터 및 시스템 설정 **/
+let elementData = [], enemyData = [], reactionData = [], stagesData = [];
+let grid, towers, enemies, projectiles, money, lives, wave, activeMap;
+let gameActive = false, isPaused = false, selectedTowerIdx = 0, isGameOver = false;
+
+const TILE_SIZE = 40, COLS = 25, ROWS = 12;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE;
+
+async function loadAllData() {
+    const cb = `?v=${Date.now()}`;
+    try {
+        const [re, rc, rr, rs] = await Promise.all([
+            fetch('elements.json'+cb).then(r=>r.json()), fetch('compounds.json'+cb).then(r=>r.json()),
+            fetch('reactions.json'+cb).then(r=>r.json()), fetch('stages.json'+cb).then(r=>r.json())
+        ]);
+        const ext = (d) => Array.isArray(d) ? d : Object.values(d).find(v=>Array.isArray(v)) || [];
+        elementData = ext(re); enemyData = ext(rc); reactionData = ext(rr); stagesData = ext(rs);
+        document.getElementById('load-status').innerText = "데이터 연결 성공!";
+        populateEditorSelects();
+    } catch (e) {
+        document.getElementById('load-status').innerText = "JSON 파일 없음 (직접 수정 필요)";
+    }
+}
+
+/** [2] 실시간 에디터 로직 (핵심) **/
+let clickCnt = 0, editorMode = false;
+function versionClick() {
+    if(++clickCnt >= 5) {
+        editorMode = !editorMode;
+        document.getElementById('editor-sidebar').classList.toggle('hidden', !editorMode);
+        alert(editorMode ? "에디터 활성화: 수치를 고치고 Apply를 누르세요." : "에디터 비활성화");
+        clickCnt = 0;
+    }
+}
+
+function populateEditorSelects() {
+    document.getElementById('edit-enemy-list').innerHTML = enemyData.map((e,i)=>`<option value="${i}">${e.id}</option>`).join("");
+    document.getElementById('edit-tower-list').innerHTML = elementData.map((e,i)=>`<option value="${i}">${e.symbol}</option>`).join("");
+    loadEnemyData(); loadTowerData();
+}
+
+function loadEnemyData() {
+    const e = enemyData[document.getElementById('edit-enemy-list').value];
+    document.getElementById('edit-hp').value = e.hp;
+    document.getElementById('edit-speed').value = e.speed;
+    document.getElementById('edit-gold').value = e.atomic_sum || 20;
+}
+
+function applyEnemyEdit() {
+    const idx = document.getElementById('edit-enemy-list').value;
+    enemyData[idx].hp = parseInt(document.getElementById('edit-hp').value);
+    enemyData[idx].speed = parseFloat(document.getElementById('edit-speed').value);
+    enemyData[idx].atomic_sum = parseInt(document.getElementById('edit-gold').value);
+    alert("적군 데이터가 실시간으로 변경되었습니다!");
+}
+
+function loadTowerData() {
+    const t = elementData[document.getElementById('edit-tower-list').value];
+    document.getElementById('edit-range').value = t.range;
+    document.getElementById('edit-frate').value = t.fire_rate;
+}
+
+function applyTowerEdit() {
+    const idx = document.getElementById('edit-tower-list').value;
+    elementData[idx].range = parseInt(document.getElementById('edit-range').value);
+    elementData[idx].fire_rate = parseFloat(document.getElementById('edit-frate').value);
+    alert("타워 성능이 실시간으로 변경되었습니다!");
+}
+
+function downloadJSON(type) {
+    let data;
+    if(type==='compounds') data = enemyData;
+    else if(type==='elements') data = elementData;
+    else {
+        // 현재 맵의 벽 정보 업데이트 후 내보내기
+        let walls = [];
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(grid[r][c]===2) walls.push({r,c,w:1,h:1});
+        activeMap.walls = walls;
+        data = stagesData;
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = type + ".json";
+    a.click();
+}
+
+/** [3] 게임 매커니즘 (NaOH 중화 및 사거리 시각화) **/
+class Tower {
+    constructor(r,c,d) {
+        this.r=r; this.c=c; this.x=c*40+20; this.y=r*40+20;
+        this.data=d; this.lastShot=0; this.level=1;
+        this.rotation = 0;
+    }
+    get currentRange() { return this.data.range * Math.pow(1.05, this.level-1); }
+    update() {
+        if(isPaused) return;
+        this.rotation += 0.04;
+        const fireMs = (this.data.fire_rate || 1.0) * 1000;
+        if(Date.now() - this.lastShot > fireMs) {
+            let validTarget = enemies.find(e => {
+                let dist = Math.hypot(e.x-this.x, e.y-this.y);
+                if(dist > this.currentRange) return false;
+                let myType = this.data.damage_type || this.data.type;
+                return reactionData.some(r => r.attacker_type === myType && r.target_type === e.data.type);
+            });
+            if(validTarget) { projectiles.push(new Projectile(this.x, this.y, validTarget, this.data)); this.lastShot = Date.now(); }
+        }
+    }
+    draw() {
+        ctx.fillStyle = this.data.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, 10, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle="#000"; ctx.font="bold 10px Arial"; ctx.textAlign="center";
+        ctx.fillText(this.data.symbol==="Na"?"NaOH":this.data.symbol, this.x, this.y+4);
+        // 사거리 및 전자 궤도
+        ctx.strokeStyle = this.data.color + "44"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.currentRange, 0, Math.PI*2); ctx.stroke();
+        for(let i=0; i<(this.data.atomic_number||1); i++){
+            let ang = this.rotation + (i * (Math.PI*2/(this.data.atomic_number||1)));
+            ctx.beginPath(); ctx.arc(this.x+Math.cos(ang)*this.currentRange, this.y+Math.sin(ang)*this.currentRange, 2, 0, Math.PI*2); ctx.fill();
+        }
+    }
+}
+
+/** [기존 물리 로직 및 렌더링 - v0.36과 동일하게 최적화 유지] **/
+class Projectile {
+    constructor(x,y,t,d){this.x=x;this.y=y;this.target=t;this.data=d;this.speed=15;}
+    update(){
+        let dx=this.target.x-this.x,dy=this.target.y-this.y,dist=Math.hypot(dx,dy);
+        if(dist<10){
+            let dmg=30; let r=reactionData.find(re=>re.attacker_type===(this.data.damage_type||this.data.type)&&re.target_type===this.target.data.type);
+            if(r) dmg *= r.multiplier||1; this.target.hp-=dmg; return true;
+        }
+        this.x+=(dx/dist)*this.speed;this.y+=(dy/dist)*this.speed; return false;
+    }
+    draw(){ctx.fillStyle=this.data.color;ctx.beginPath();ctx.arc(this.x,this.y,4,0,Math.PI*2);ctx.fill();}
+}
+
+class Enemy {
+    constructor(data){
+        this.data=data;this.hp=data.hp;this.maxHp=data.hp;
+        this.x=activeMap.start.c*40+20;this.y=activeMap.start.r*40+20;
+        this.path=findPath(activeMap.start.r,activeMap.start.c,activeMap.end.r,activeMap.end.c);
+        this.pathIdx=0;
+    }
+    update(){
+        if(!this.path||this.pathIdx>=this.path.length-1){lives--;return false;}
+        let t=this.path[this.pathIdx+1],tx=t.c*40+20,ty=t.r*40+20,dist=Math.hypot(tx-this.x,ty-this.y);
+        if(dist<2){this.pathIdx++;return true;}
+        this.x+=((tx-this.x)/dist)*this.data.speed;this.y+=((ty-this.y)/dist)*this.data.speed; return true;
+    }
+    draw(){
+        ctx.fillStyle=this.data.color||"#f44";ctx.beginPath();ctx.arc(this.x,this.y,14,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="white";ctx.font="bold 9px Arial";ctx.textAlign="center";ctx.fillText(this.data.formula,this.x,this.y+4);
+        ctx.fillStyle="#0f8";ctx.fillRect(this.x-15,this.y-22,30*(this.hp/this.maxHp),3);
+    }
+}
+
+function gameLoop() {
+    if(!gameActive||isGameOver) return;
+    if(!isPaused){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        renderMap();
+        towers.forEach(t=>t.update());
+        projectiles=projectiles.filter(p=>!p.update());
+        enemies=enemies.filter(e=>{ if(e.hp<=0){money+=(Number(e.data.atomic_sum)||20);updateUI();return false;} return e.update(); });
+        if(lives<=0){alert("Overwhelmed!");location.reload();return;}
+        if(wave>=10&&enemies.length===0){alert("STAGE CLEAR!");location.reload();}
+    }
+    towers.forEach(t=>t.draw()); enemies.forEach(e=>e.draw()); projectiles.forEach(p=>p.draw());
+    requestAnimationFrame(gameLoop);
+}
+
+function renderMap(){
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+        ctx.strokeStyle="#151515";ctx.strokeRect(c*40,r*40,40,40);
+        if(grid[r][c]===2){ctx.fillStyle="#333";ctx.fillRect(c*40+2,r*40+2,36,36);}
+    }
+    ctx.fillStyle="rgba(0,255,136,0.1)";ctx.fillRect(activeMap.start.c*40,activeMap.start.r*40,40,40);
+    ctx.fillStyle="rgba(255,68,68,0.1)";ctx.fillRect(activeMap.end.c*40,activeMap.end.r*40,40,40);
+}
+
+canvas.onclick=(ev)=>{
+    let rect=canvas.getBoundingClientRect();
+    let c=Math.floor((ev.clientX-rect.left)/40),r=Math.floor((ev.clientY-rect.top)/40);
+    if(editorMode){ grid[r][c]=(grid[r][c]===2)?0:2; enemies.forEach(e=>{e.path=findPath(Math.floor(e.y/40),Math.floor(e.x/40),activeMap.end.r,activeMap.end.c);e.pathIdx=0;}); return; }
+    if(grid[r][c]!==0)return;
+    let d=elementData.filter(t=>activeMap.allowed_towers.includes(t.symbol)||activeMap.allowed_towers.includes(t.id))[selectedTowerIdx];
+    if(d&&money>=d.cost){ grid[r][c]=1; if(findPath(activeMap.start.r,activeMap.start.c,activeMap.end.r,activeMap.end.c)){towers.push(new Tower(r,c,d));money-=d.cost;updateUI();}else grid[r][c]=0; }
+};
+
+function findPath(sr,sc,er,ec){
+    let q=[{r:sr,c:sc,p:[{r:sr,c:sc}]}],v=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+    if(sr<0||sr>=ROWS||sc<0||sc>=COLS)return null; v[sr][sc]=true;
+    while(q.length>0){
+        let curr=q.shift(); if(curr.r===er&&curr.c===ec)return curr.p;
+        for(let d of [{r:1,c:0},{r:-1,c:0},{r:0,c:1},{r:0,c:-1}]){
+            let nr=curr.r+d.r,nc=curr.c+d.c;
+            if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!v[nr][nc]&&grid[nr][nc]===0){v[nr][nc]=true;q.push({r:nr,c:nc,p:[...curr.p,{r:nr,c:nc}]});}
+        }
+    }
+    return null;
+}
+
+function initStage(num){
+    activeMap=stagesData[num-1]; grid=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+    if(activeMap.walls)activeMap.walls.forEach(w=>{for(let r=w.r;r<w.r+w.h;r++)for(let c=w.c;c<w.c+w.w;c++)if(grid[r])grid[r][c]=2;});
+    towers=[];enemies=[];projectiles=[];money=600;lives=20;wave=0;gameActive=true;isGameOver=false;
+    document.getElementById('main-menu').classList.add('hidden');document.getElementById('header').classList.remove('hidden');document.getElementById('game-layout').classList.remove('hidden');
+    updateUI();initTowerMenu();spawnWave();requestAnimationFrame(gameLoop);
+}
+
+function spawnWave(){
+    if(!gameActive||wave>=10)return; wave++; updateUI();
+    let count=0, spawnCount=3+Math.floor(wave/2);
+    let timer=setInterval(()=>{ if(!isPaused){let d=enemyData[Math.floor(Math.random()*enemyData.length)];enemies.push(new Enemy({...d,hp:d.hp*(1+(wave-1)*0.3),speed:d.speed+(wave*0.03)}));if(++count>=spawnCount)clearInterval(timer);} },1200);
+}
+
+function updateUI(){document.getElementById('money-ui').innerText=money;document.getElementById('wave-ui').innerText=wave;}
+function initTowerMenu(){ const allowed=activeMap.allowed_towers; const av=elementData.filter(t=>allowed.includes(t.symbol)||allowed.includes(t.id)); document.getElementById('tower-menu').innerHTML=av.map((t,i)=>`<div class="tower-card ${i===selectedTowerIdx?'selected':''}" style="border-bottom:4px solid ${t.color}" onclick="selectedTowerIdx=${i};initTowerMenu()"><b>${t.symbol==="Na"?"NaOH":t.symbol}</b><br>${t.cost}G</div>`).join("");}
+
+loadAllData();
+</script>
+</body>
+</html>
