@@ -43,6 +43,7 @@ export default function App() {
   const [showGuide, setShowGuide] = useState(false);
   const [showReward, setShowReward] = useState(false);
   const [lastReward, setLastReward] = useState<{ elements: string[], money: number } | null>(null);
+  const [isWaveActive, setIsWaveActive] = useState(false);
 
   // Editor State
   const [editorMode, setEditorMode] = useState(false);
@@ -145,6 +146,7 @@ export default function App() {
     setMoney(gameMode === 'tutorial' ? 1000 : 500);
     setHealth(20);
     setWave(1);
+    setIsWaveActive(false);
     towersRef.current = [];
     enemiesRef.current = [];
     projectilesRef.current = [];
@@ -580,15 +582,13 @@ export default function App() {
     }
 
     // 4. Wave Management
-    if (enemiesRef.current.length === 0 && mode !== 'main-menu' && mode !== 'mode-menu' && !isPaused) {
+    if (enemiesRef.current.length === 0 && isWaveActive && mode !== 'main-menu' && mode !== 'mode-menu' && !isPaused) {
       if (mode === 'tutorial') {
         const stage = TUTORIAL_STAGES[currentStageIndex];
         // Tutorial logic: spawn specific enemy
         if (wave < 5) {
-          addLog(`WAVE ${wave} COMPLETE! SPAWNING NEXT...`);
-          for (let i = 0; i < 3; i++) {
-            setTimeout(() => spawnEnemy(stage.enemyId), i * 1500);
-          }
+          addLog(`WAVE ${wave} COMPLETE! PREPARE FOR NEXT...`);
+          setIsWaveActive(false); // Pause between waves
           setWave(w => w + 1);
         } else {
           // Check Clear Condition
@@ -602,14 +602,27 @@ export default function App() {
         }
       } else {
         // Survival logic
+        addLog(`WAVE ${wave} COMPLETE! PREPARE FOR NEXT...`);
+        setIsWaveActive(false);
         setWave(w => w + 1);
-        const survivalEnemies = ['H2', 'Cl2', 'HCl', 'NH3', 'HF', 'H2S', 'H2SO4_D', 'COCl2', 'MIXED'];
-        for (let i = 0; i < wave + 2; i++) {
-          const maxIdx = Math.min(wave, survivalEnemies.length);
-          const enemyId = survivalEnemies[Math.floor(Math.random() * maxIdx)];
-          setTimeout(() => spawnEnemy(enemyId, Math.random() > 0.5 ? 'top' : 'left'), i * 1000);
-        }
       }
+    }
+
+    // Spawn logic if wave just started
+    if (isWaveActive && enemiesRef.current.length === 0 && (mode === 'tutorial' || mode === 'survival')) {
+       if (mode === 'tutorial') {
+         const stage = TUTORIAL_STAGES[currentStageIndex];
+         for (let i = 0; i < 3; i++) {
+            setTimeout(() => spawnEnemy(stage.enemyId), i * 1500);
+          }
+       } else {
+         const survivalEnemies = ['H2', 'Cl2', 'HCl', 'NH3', 'HF', 'H2S', 'H2SO4_D', 'COCl2', 'MIXED'];
+         for (let i = 0; i < wave + 2; i++) {
+           const maxIdx = Math.min(wave, survivalEnemies.length);
+           const enemyId = survivalEnemies[Math.floor(Math.random() * maxIdx)];
+           setTimeout(() => spawnEnemy(enemyId, Math.random() > 0.5 ? 'top' : 'left'), i * 1000);
+         }
+       }
     }
 
     // 5. Game Over Check
@@ -977,20 +990,40 @@ export default function App() {
     });
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent) => {
+  const getScaledCoords = (clientX: number, clientY: number) => {
     const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    if (!rect) return { x: 0, y: 0 };
+
+    const canvasAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
+    const containerAspect = rect.width / rect.height;
+
+    let displayWidth, displayHeight, offsetX, offsetY;
+
+    if (containerAspect > canvasAspect) {
+      displayHeight = rect.height;
+      displayWidth = rect.height * canvasAspect;
+      offsetX = (rect.width - displayWidth) / 2;
+      offsetY = 0;
+    } else {
+      displayWidth = rect.width;
+      displayHeight = rect.width / canvasAspect;
+      offsetX = 0;
+      offsetY = (rect.height - displayHeight) / 2;
+    }
+
+    const x = ((clientX - rect.left - offsetX) / displayWidth) * CANVAS_WIDTH;
+    const y = ((clientY - rect.top - offsetY) / displayHeight) * CANVAS_HEIGHT;
+
+    return { x, y };
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    const { x, y } = getScaledCoords(e.clientX, e.clientY);
     setMousePos({ x, y });
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    const { x, y } = getScaledCoords(e.clientX, e.clientY);
 
     const gridX = Math.floor(x / CELL_SIZE);
     const gridY = Math.floor(y / CELL_SIZE);
@@ -1130,10 +1163,7 @@ export default function App() {
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!draggingElement) return;
     const touch = e.touches[0];
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((touch.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((touch.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    const { x, y } = getScaledCoords(touch.clientX, touch.clientY);
     setMousePos({ x, y });
   };
 
@@ -1514,6 +1544,25 @@ export default function App() {
                   onTouchEnd={handleTouchEnd}
                   className="w-full h-full object-contain touch-none"
                 />
+
+                {/* Start Wave Button */}
+                <AnimatePresence>
+                  {!isWaveActive && enemiesRef.current.length === 0 && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8, x: 20 }}
+                      animate={{ opacity: 1, scale: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, x: 20 }}
+                      onClick={() => {
+                        setIsWaveActive(true);
+                        addLog(`PROTOCOL INITIATED: Wave ${wave} is now active.`);
+                      }}
+                      className="absolute bottom-10 right-10 px-10 py-5 bg-[#00FF00] text-[#141414] font-black uppercase tracking-[0.2em] shadow-[0_0_50px_rgba(0,255,0,0.5)] hover:bg-[#00FF00]/90 hover:scale-105 active:scale-95 transition-all z-[100] flex items-center gap-3"
+                    >
+                      <Play className="w-6 h-6 fill-current" />
+                      Start Wave {wave}
+                    </motion.button>
+                  )}
+                </AnimatePresence>
                 
                 {/* Stage Info Overlay */}
                 {mode === 'tutorial' && wave === 1 && (
