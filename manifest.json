@@ -1,0 +1,21 @@
+{
+  "name": "Chemi-Defense",
+  "short_name": "ChemiDef",
+  "description": "Chemical Reaction Defense Game",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#00FF00",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/chemistry/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/chemistry/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
