@@ -1,0 +1,74 @@
+[
+  {
+    "reactant1": "H2",
+    "reactant2": "O",
+    "product": "H2O",
+    "type": "Combustion",
+    "gold": 50,
+    "description": "Explosive reaction! Water is formed."
+  },
+  {
+    "reactant1": "H",
+    "reactant2": "O",
+    "product": "H2O",
+    "type": "Combustion",
+    "gold": 30,
+    "description": "Hydrogen atom is neutralized by oxygen."
+  },
+  {
+    "reactant1": "Cl2",
+    "reactant2": "H",
+    "product": "HCl",
+    "type": "Synthesis",
+    "gold": 40,
+    "description": "Chlorine gas reacts with hydrogen to form HCl."
+  },
+  {
+    "reactant1": "HCl",
+    "reactant2": "Na",
+    "product": "NaCl",
+    "type": "Neutralization",
+    "gold": 60,
+    "description": "Acid and base neutralize to form salt."
+  },
+  {
+    "reactant1": "NH3",
+    "reactant2": "HCl",
+    "product": "NH4Cl",
+    "type": "Neutralization",
+    "gold": 70,
+    "description": "Ammonia and HCl form solid ammonium chloride."
+  },
+  {
+    "reactant1": "HF",
+    "reactant2": "Ca",
+    "product": "CaF2",
+    "type": "Detoxification",
+    "gold": 80,
+    "description": "Calcium detoxifies HF by forming precipitation."
+  },
+  {
+    "reactant1": "H2S",
+    "reactant2": "Fe",
+    "product": "FeS",
+    "type": "Precipitation",
+    "gold": 90,
+    "description": "Iron reacts with H2S to form solid FeS."
+  },
+  {
+    "reactant1": "H2SO4_D",
+    "reactant2": "Ca",
+    "product": "CaSO4",
+    "type": "Neutralization",
+    "gold": 100,
+    "description": "Calcium neutralizes sulfuric acid."
+  },
+  {
+    "reactant1": "COCl2",
+    "reactant2": "O",
+    "product": "CO2",
+    "type": "Oxidation",
+    "gold": 120,
+    "description": "Phosgene is oxidized to CO2 and Cl2."
+  }
+]

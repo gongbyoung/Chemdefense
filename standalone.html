@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemi-Defense Standalone</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #141414; color: #E4E3E0; margin: 0; overflow: hidden; }
+        canvas { display: block; background: #000; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(228, 227, 224, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(228, 227, 224, 0.2); }
+        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(228, 227, 224, 0.2) transparent; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- DATA ---
+        const ELEMENTS = {
+            "H": { name: "H", elementName: "Hydrogen", atomicNumber: 1, baseDmg: 10, range: 400, fireRate: 1.0 },
+            "O": { name: "O", elementName: "Oxygen", atomicNumber: 8, baseDmg: 5, range: 500, fireRate: 0.5 },
+            "Cl": { name: "Cl", elementName: "Chlorine", atomicNumber: 17, baseDmg: 25, range: 450, fireRate: 1.2 },
+            "Na": { name: "Na", elementName: "Sodium", atomicNumber: 11, baseDmg: 100, range: 250, fireRate: 2.5 },
+            "S": { name: "S", elementName: "Sulfur", atomicNumber: 16, baseDmg: 20, range: 480, fireRate: 0.9 }
+        };
+
+        const COMPOUNDS = {
+            "H2": { id: "H2", name: "H2", displayName: "Hydrogen Gas" },
+            "Cl2": { id: "Cl2", name: "Cl2", displayName: "Chlorine Gas" },
+            "HCl": { id: "HCl", name: "HCl", displayName: "Hydrochloric Acid" }
+        };
+
+        const TUTORIAL_STAGES = [
+            { id: "TUT-01", title: "Hydrogen Leak", enemyId: "H2", givenTowers: ["H"], quote: "Hydrogen is colorless and odorless." },
+            { id: "TUT-02", title: "Chlorine Gas Leak", enemyId: "Cl2", givenTowers: ["H", "Cl"], quote: "Chlorine is heavier than air." }
+        ];
+
+        // --- APP COMPONENT ---
+        function App() {
+            const [mode, setMode] = useState('menu');
+            const [money, setMoney] = useState(500);
+            const [health, setHealth] = useState(20);
+            const [wave, setWave] = useState(1);
+            const [selectedElement, setSelectedElement] = useState(null);
+            
+            const canvasRef = useRef(null);
+            const towersRef = useRef([]);
+            const enemiesRef = useRef([]);
+            const projectilesRef = useRef([]);
+            const gridRef = useRef(Array(8).fill(null).map(() => Array(12).fill(false)));
+            const requestRef = useRef(0);
+
+            const findPath = useCallback((start, end) => {
+                const startX = Math.floor(start.x / 100);
+                const startY = Math.floor(start.y / 100);
+                const endX = Math.floor(end.x / 100);
+                const endY = Math.floor(end.y / 100);
+
+                const openSet = [{ x: startX, y: startY, g: 0, h: Math.abs(startX - endX) + Math.abs(startY - endY), parent: null }];
+                const closedSet = new Set();
+
+                while (openSet.length > 0) {
+                    openSet.sort((a, b) => (a.g + a.h) - (b.g + b.h));
+                    const current = openSet.shift();
+
+                    if (current.x === endX && current.y === endY) {
+                        const path = [];
+                        let curr = current;
+                        while (curr) {
+                            path.push({ x: curr.x * 100 + 50, y: curr.y * 100 + 50 });
+                            curr = curr.parent;
+                        }
+                        return path.reverse();
+                    }
+
+                    closedSet.add(`${current.x},${current.y}`);
+
+                    const neighbors = [{x: current.x+1, y: current.y}, {x: current.x-1, y: current.y}, {x: current.x, y: current.y+1}, {x: current.x, y: current.y-1}];
+                    for (const n of neighbors) {
+                        if (n.x < 0 || n.x >= 12 || n.y < 0 || n.y >= 8) continue;
+                        if (gridRef.current[n.y][n.x]) continue;
+                        if (closedSet.has(`${n.x},${n.y}`)) continue;
+
+                        const g = current.g + 1;
+                        const h = Math.abs(n.x - endX) + Math.abs(n.y - endY);
+                        const existing = openSet.find(o => o.x === n.x && o.y === n.y);
+                        if (!existing || g < existing.g) {
+                            if (existing) { existing.g = g; existing.parent = current; }
+                            else { openSet.push({ ...n, g, h, parent: current }); }
+                        }
+                    }
+                }
+                return null;
+            }, []);
+
+            const startGame = (m) => {
+                setMode(m);
+                setMoney(500);
+                setHealth(20);
+                setWave(1);
+                towersRef.current = [];
+                enemiesRef.current = [];
+                projectilesRef.current = [];
+                gridRef.current = Array(8).fill(null).map(() => Array(12).fill(false));
+            };
+
+            const spawnEnemy = useCallback(() => {
+                const id = Math.random().toString(36).substr(2, 9);
+                const startY = 400; // Center spawn for simplicity in standalone
+                const path = findPath({ x: 0, y: startY }, { x: 1100, y: startY });
+                if (!path) return;
+
+                enemiesRef.current.push({
+                    id, x: -50, y: startY, health: 100 + (wave * 20), maxHealth: 100 + (wave * 20),
+                    bondEnergy: 50, maxBondEnergy: 50,
+                    speed: 1.5, compound: COMPOUNDS["H2"], radius: 30,
+                    path, pathIndex: 0
+                });
+            }, [wave, findPath]);
+
+            const spawnEnemyAt = (compoundId, x, y) => {
+                const id = Math.random().toString(36).substr(2, 9);
+                const path = findPath({ x, y }, { x: 1100, y });
+                enemiesRef.current.push({
+                    id, x, y, health: 150, maxHealth: 150, bondEnergy: 0, maxBondEnergy: 0,
+                    speed: 1.0, compound: COMPOUNDS[compoundId] || COMPOUNDS["H2"], radius: 40,
+                    path: path || [{x, y}, {x: 1250, y}], pathIndex: 0
+                });
+            };
+
+            const update = () => {
+                if (mode === 'menu') return;
+
+                // Move Enemies
+                enemiesRef.current.forEach((e, i) => {
+                    const target = e.path[e.pathIndex + 1];
+                    if (!target) {
+                        e.x += e.speed;
+                        if (e.x > 1200) {
+                            setHealth(h => h - 1);
+                            enemiesRef.current.splice(i, 1);
+                        }
+                        return;
+                    }
+
+                    const dx = target.x - e.x;
+                    const dy = target.y - e.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 5) {
+                        e.pathIndex++;
+                    } else {
+                        e.x += (dx/dist) * e.speed;
+                        e.y += (dy/dist) * e.speed;
+                    }
+                });
+
+                // Tower Firing
+                towersRef.current.forEach(t => {
+                    const now = Date.now();
+                    if (!t.lastFired || now - t.lastFired > 1000 / t.element.fireRate) {
+                        const target = enemiesRef.current.find(e => {
+                            const dist = Math.sqrt((e.x - t.x)**2 + (e.y - t.y)**2);
+                            return dist < t.element.range;
+                        });
+                        if (target) {
+                            if (t.element.name === 'O' && target.compound.id === 'H2') {
+                                setMoney(m => m + 50);
+                                enemiesRef.current.splice(enemiesRef.current.indexOf(target), 1);
+                                t.lastFired = now;
+                                return;
+                            }
+                            projectilesRef.current.push({ x: t.x, y: t.y, targetId: target.id, speed: 7, damage: t.element.baseDmg, element: t.element.name });
+                            t.lastFired = now;
+                        }
+                    }
+                });
+
+                // Projectiles
+                projectilesRef.current.forEach((p, i) => {
+                    const target = enemiesRef.current.find(e => e.id === p.targetId);
+                    if (!target) { projectilesRef.current.splice(i, 1); return; }
+                    const dx = target.x - p.x;
+                    const dy = target.y - p.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 10) {
+                        if (p.element === 'H' && target.compound.id === 'H2') {
+                            target.bondEnergy -= p.damage;
+                            if (target.bondEnergy <= 0) {
+                                const x = target.x, y = target.y;
+                                enemiesRef.current.splice(enemiesRef.current.indexOf(target), 1);
+                                spawnEnemyAt('H', x-10, y);
+                                spawnEnemyAt('H', x+10, y);
+                                projectilesRef.current.splice(i, 1);
+                                return;
+                            }
+                        } else {
+                            target.health -= p.damage;
+                        }
+                        projectilesRef.current.splice(i, 1);
+                        if (target.health <= 0) {
+                            const idx = enemiesRef.current.findIndex(e => e.id === target.id);
+                            if (idx > -1) { enemiesRef.current.splice(idx, 1); setMoney(m => m + 20); }
+                        }
+                    } else {
+                        p.x += (dx/dist) * p.speed;
+                        p.y += (dy/dist) * p.speed;
+                    }
+                });
+
+                if (enemiesRef.current.length === 0) spawnEnemy();
+                if (health <= 0) setMode('menu');
+
+                draw();
+                requestRef.current = requestAnimationFrame(update);
+            };
+
+            const draw = () => {
+                const ctx = canvasRef.current?.getContext('2d');
+                if (!ctx) return;
+                ctx.clearRect(0, 0, 1200, 800);
+                
+                // Background
+                ctx.fillStyle = '#0a0a0a';
+                ctx.fillRect(0, 0, 1200, 800);
+
+                // Source & Exit
+                ctx.fillStyle = '#333'; ctx.fillRect(0, 340, 80, 120);
+                ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(1150, 400, 60, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#00FF00'; ctx.stroke();
+
+                // Grid & Blocked
+                ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                for(let r=0; r<8; r++) {
+                    for(let c=0; c<12; c++) {
+                        if (gridRef.current[r][c]) { ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fillRect(c*100, r*100, 100, 100); }
+                        ctx.strokeRect(c*100, r*100, 100, 100);
+                    }
+                }
+
+                towersRef.current.forEach(t => {
+                    ctx.fillStyle = '#00FF00'; ctx.beginPath(); ctx.arc(t.x, t.y, 20, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 12px Inter'; ctx.textAlign = 'center'; ctx.fillText(t.element.name, t.x, t.y+5);
+                });
+
+                enemiesRef.current.forEach(e => {
+                    ctx.fillStyle = '#E4E3E0'; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#00FF00'; ctx.fillRect(e.x-20, e.y-40, 40 * (e.health/e.maxHealth), 4);
+                    if (e.bondEnergy > 0) { ctx.fillStyle = '#3498db'; ctx.fillRect(e.x-20, e.y-46, 40 * (e.bondEnergy/e.maxBondEnergy), 4); }
+                });
+
+                projectilesRef.current.forEach(p => {
+                    ctx.fillStyle = '#00FF00'; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+                });
+            };
+
+            useEffect(() => {
+                if (mode !== 'menu') requestRef.current = requestAnimationFrame(update);
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [mode]);
+
+            const handleClick = (e) => {
+                if (!selectedElement) return;
+                const rect = canvasRef.current.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 1200;
+                const y = ((e.clientY - rect.top) / rect.height) * 800;
+                const gridX = Math.floor(x / 100);
+                const gridY = Math.floor(y / 100);
+
+                if (gridRef.current[gridY][gridX]) return;
+                gridRef.current[gridY][gridX] = true;
+                const testPath = findPath({x: 0, y: 400}, {x: 1100, y: 400});
+                if (!testPath) { gridRef.current[gridY][gridX] = false; return; }
+
+                if (money >= 100) {
+                    towersRef.current.push({ x: gridX*100+50, y: gridY*100+50, element: selectedElement });
+                    setMoney(m => m - 100);
+                    enemiesRef.current.forEach(en => {
+                        const newPath = findPath({x: en.x, y: en.y}, {x: 1100, y: en.y});
+                        if (newPath) { en.path = newPath; en.pathIndex = 0; }
+                    });
+                } else {
+                    gridRef.current[gridY][gridX] = false;
+                }
+            };
+
+            return (
+                <div className="h-screen flex flex-col">
+                    <header className="p-4 border-b border-white/10 flex justify-between items-center bg-black">
+                        <h1 className="font-black italic text-xl">CHEMI-DEFENSE <span className="text-[#00FF00]">STANDALONE</span></h1>
+                        {mode !== 'menu' && (
+                            <div className="flex gap-6 text-xs font-mono">
+                                <span>HP: {health}</span>
+                                <span>ENERGY: {money}</span>
+                            </div>
+                        )}
+                    </header>
+
+                    <div className="flex-1 relative flex items-center justify-center bg-zinc-900">
+                        {mode === 'menu' ? (
+                            <div className="text-center space-y-8">
+                                <h2 className="text-5xl font-black italic">READY FOR DEPLOYMENT?</h2>
+                                <button onClick={() => startGame('survival')} className="px-12 py-4 bg-[#00FF00] text-black font-black uppercase tracking-widest hover:scale-105 transition-transform">START SURVIVAL</button>
+                            </div>
+                        ) : (
+                            <div className="flex w-full h-full p-4 gap-4">
+                                <div className="w-48 space-y-4">
+                                    <div className="text-[10px] uppercase opacity-50">Elements</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {Object.values(ELEMENTS).map(el => (
+                                            <button key={el.name} onClick={() => setSelectedElement(el)} className={`p-4 border ${selectedElement?.name === el.name ? 'border-[#00FF00] bg-[#00FF00]/10' : 'border-white/10'}`}>{el.name}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <canvas ref={canvasRef} width="1200" height="800" onClick={handleClick} className="flex-1 border border-white/20 cursor-crosshair h-full w-full object-contain bg-black" />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

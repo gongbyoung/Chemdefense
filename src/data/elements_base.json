@@ -1,0 +1,18 @@
+{
+  "H": { "name": "H", "atomicNumber": 1, "valenceElectrons": 1, "groupType": "Nonmetal", "isPlayable": true },
+  "He": { "name": "He", "atomicNumber": 2, "valenceElectrons": 2, "groupType": "NobleGas", "isPlayable": true },
+  "Li": { "name": "Li", "atomicNumber": 3, "valenceElectrons": 1, "groupType": "Alkali", "isPlayable": true },
+  "C": { "name": "C", "atomicNumber": 6, "valenceElectrons": 4, "groupType": "Nonmetal", "isPlayable": true },
+  "N": { "name": "N", "atomicNumber": 7, "valenceElectrons": 5, "groupType": "Nonmetal", "isPlayable": true },
+  "O": { "name": "O", "atomicNumber": 8, "valenceElectrons": 6, "groupType": "Chalcogen", "isPlayable": true },
+  "F": { "name": "F", "atomicNumber": 9, "valenceElectrons": 7, "groupType": "Halogen", "isPlayable": true },
+  "Na": { "name": "Na", "atomicNumber": 11, "valenceElectrons": 1, "groupType": "Alkali", "isPlayable": true },
+  "S": { "name": "S", "atomicNumber": 16, "valenceElectrons": 6, "groupType": "Chalcogen", "isPlayable": true },
+  "Cl": { "name": "Cl", "atomicNumber": 17, "valenceElectrons": 7, "groupType": "Halogen", "isPlayable": true },
+  "Ca": { "name": "Ca", "atomicNumber": 20, "valenceElectrons": 2, "groupType": "Alkaline", "isPlayable": true },
+  "Fe": { "name": "Fe", "atomicNumber": 26, "valenceElectrons": 8, "groupType": "Transition", "isPlayable": false },
+  "BEAKER": { "name": "BEAKER", "atomicNumber": 0, "valenceElectrons": 0, "groupType": "Glassware", "isPlayable": true },
+  "FLASK": { "name": "FLASK", "atomicNumber": 0, "valenceElectrons": 0, "groupType": "Glassware", "isPlayable": true },
+  "FAN": { "name": "FAN", "atomicNumber": 0, "valenceElectrons": 0, "groupType": "Equipment", "isPlayable": true },
+  "HEATER": { "name": "HEATER", "atomicNumber": 0, "valenceElectrons": 0, "groupType": "Equipment", "isPlayable": true }
+}

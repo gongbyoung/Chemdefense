@@ -1,0 +1,5 @@
+{
+  "name": "Chemi-Defense Engine",
+  "description": "A chemical reaction defense game engine that simulates real-world chemistry reactions using AI.",
+  "requestFramePermissions": []
+}

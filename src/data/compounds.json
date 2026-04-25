@@ -1,0 +1,117 @@
+{
+  "H2": { 
+    "id": "H2", 
+    "name": "H2", 
+    "displayName": "Hydrogen Gas", 
+    "hazard": "Explosive / Flammable",
+    "description": "Extremely flammable gas. Can form explosive mixtures with air. Colorless and odorless.", 
+    "primaryAtom": "H" 
+  },
+  "Cl2": { 
+    "id": "Cl2", 
+    "name": "Cl2", 
+    "displayName": "Chlorine Gas", 
+    "hazard": "Toxic / Corrosive",
+    "description": "Highly toxic yellow-green gas. Causes severe respiratory damage. Heavier than air.", 
+    "primaryAtom": "Cl" 
+  },
+  "HCl": { 
+    "id": "HCl", 
+    "name": "HCl", 
+    "displayName": "Hydrochloric Acid", 
+    "hazard": "Corrosive / Acidic",
+    "description": "Strong corrosive acid. Fumes cause severe burns to skin and eyes.", 
+    "primaryAtom": "Cl", 
+    "isIonized": true 
+  },
+  "NH3": { 
+    "id": "NH3", 
+    "name": "NH3", 
+    "displayName": "Ammonia", 
+    "hazard": "Toxic / Irritant",
+    "description": "Pungent, suffocating odor. Highly irritating to eyes and respiratory system.", 
+    "primaryAtom": "N" 
+  },
+  "HF": { 
+    "id": "HF", 
+    "name": "HF", 
+    "displayName": "Hydrofluoric Acid", 
+    "hazard": "Extreme Toxicity",
+    "description": "Highly corrosive. Penetrates skin and attacks bone calcium. Fatal if not treated.", 
+    "primaryAtom": "F", 
+    "isIonized": true 
+  },
+  "H2S": { 
+    "id": "H2S", 
+    "name": "H2S", 
+    "displayName": "Hydrogen Sulfide", 
+    "hazard": "Highly Toxic / Flammable",
+    "description": "Smells like rotten eggs. Paralyzes the sense of smell at high concentrations. Fatal.", 
+    "primaryAtom": "S" 
+  },
+  "H2SO4_D": { 
+    "id": "H2SO4_D", 
+    "name": "H2SO4 (Dilute)", 
+    "displayName": "Dilute Sulfuric Acid", 
+    "hazard": "Corrosive",
+    "description": "Powerful dehydrating agent. Causes severe chemical burns.", 
+    "primaryAtom": "S" 
+  },
+  "COCl2": { 
+    "id": "COCl2", 
+    "name": "COCl2", 
+    "displayName": "Phosgene", 
+    "hazard": "Chemical Weapon / Toxic",
+    "description": "Used as a chemical weapon in WWI. Smells like freshly cut grass. Delayed lung edema.", 
+    "primaryAtom": "Cl" 
+  },
+  "MIXED": { 
+    "id": "MIXED", 
+    "name": "Mixed Leak", 
+    "displayName": "Mixed Chemicals", 
+    "hazard": "Unpredictable",
+    "description": "Complex mixture of industrial chemicals. High risk of secondary reactions.", 
+    "primaryAtom": "Cl" 
+  },
+  "H2SO4_F": { 
+    "id": "H2SO4_F", 
+    "name": "H2SO4 (Full)", 
+    "displayName": "Sulfuric Acid Boss", 
+    "hazard": "Extreme Corrosive",
+    "description": "Concentrated sulfuric acid leak. Destroys everything in its path.", 
+    "primaryAtom": "S" 
+  },
+  "H": { 
+    "id": "H", 
+    "name": "H", 
+    "displayName": "Hydrogen Atom", 
+    "hazard": "Reactive Intermediate",
+    "description": "Highly reactive atomic hydrogen. Seeking stabilization.", 
+    "primaryAtom": "H" 
+  },
+  "HSO4-": { 
+    "id": "HSO4-", 
+    "name": "HSO4-", 
+    "displayName": "Bisulfate Ion", 
+    "hazard": "Acidic Ion",
+    "description": "Intermediate product of sulfuric acid ionization.", 
+    "primaryAtom": "S", 
+    "isIonized": true 
+  },
+  "SO42-": { 
+    "id": "SO42-", 
+    "name": "SO42-", 
+    "displayName": "Sulfate Ion", 
+    "hazard": "Stable Ion",
+    "description": "Final stable state of neutralized sulfuric acid.", 
+    "primaryAtom": "S", 
+    "isIonized": true 
+  },
+  "H2O": { "id": "H2O", "name": "H2O", "displayName": "Water", "hazard": "Safe", "description": "Safe byproduct of combustion/neutralization", "primaryAtom": "O", "isNeutral": true },
+  "NaCl": { "id": "NaCl", "name": "NaCl", "displayName": "Salt", "hazard": "Safe", "description": "Safe byproduct of neutralization", "primaryAtom": "Na", "isNeutral": true },
+  "NH4Cl": { "id": "NH4Cl", "name": "NH4Cl", "displayName": "Ammonium Chloride", "hazard": "Safe", "description": "Solid byproduct", "primaryAtom": "Cl", "isNeutral": true },
+  "CaF2": { "id": "CaF2", "name": "CaF2", "displayName": "Calcium Fluoride", "hazard": "Safe", "description": "Safe precipitation", "primaryAtom": "Ca", "isNeutral": true },
+  "FeS": { "id": "FeS", "name": "FeS", "displayName": "Iron Sulfide", "hazard": "Safe", "description": "Safe precipitation", "primaryAtom": "Fe", "isNeutral": true },
+  "CaSO4": { "id": "CaSO4", "name": "CaSO4", "displayName": "Calcium Sulfate", "hazard": "Safe", "description": "Safe byproduct", "primaryAtom": "Ca", "isNeutral": true },
+  "CO2": { "id": "CO2", "name": "CO2", "displayName": "Carbon Dioxide", "hazard": "Safe", "description": "Safe byproduct", "primaryAtom": "C", "isNeutral": true }
+}
